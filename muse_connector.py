@@ -28,8 +28,8 @@ def _resolve_preset() -> Optional[str]:
     """Return the BLE preset selected via the ``MUSE_PRESET`` env var.
 
     Falls back to ``None`` (which makes ``MuseAthenaBoard`` use its class
-    default ``p1041``). Set ``MUSE_PRESET=p1034`` for experimental
-    EEG-only ultra-low-power streaming.
+    default ``p1034``). Set ``MUSE_PRESET=p1041`` for full sensor
+    streaming (EEG + PPG + IMU).
     """
     preset = os.getenv("MUSE_PRESET", "").strip()
     return preset or None

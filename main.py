@@ -80,6 +80,10 @@ class BrainOverlayApp:
         self._running = threading.Event()
         self._data_thread: Optional[threading.Thread] = None
 
+        # Guards concurrent reconnect attempts triggered from the tray menu.
+        self._reconnect_lock = threading.Lock()
+        self._reconnecting = False
+
     # ------------------------------------------------------------------
     # Lifecycle
     # ------------------------------------------------------------------
@@ -270,15 +274,28 @@ class BrainOverlayApp:
         self._root.after(0, lambda: self._overlay.set_visible(visible))
 
     def _on_reconnect(self) -> None:
+        # Drop the request if a previous reconnect is still in flight; otherwise
+        # rapid menu clicks could spawn overlapping threads that race on
+        # _data_thread.join() and connector.disconnect().
+        with self._reconnect_lock:
+            if self._reconnecting:
+                logger.info("Reconnect already in progress; ignoring request.")
+                return
+            self._reconnecting = True
+
         def _do_reconnect():
-            # Stop existing data thread
-            if self._running.is_set():
-                self._running.clear()
-                if self._data_thread:
-                    self._data_thread.join(timeout=5)
-                self._connector.disconnect()
-            # Restart
-            self._start_data_thread()
+            try:
+                # Stop existing data thread
+                if self._running.is_set():
+                    self._running.clear()
+                    if self._data_thread:
+                        self._data_thread.join(timeout=5)
+                    self._connector.disconnect()
+                # Restart
+                self._start_data_thread()
+            finally:
+                with self._reconnect_lock:
+                    self._reconnecting = False
         # Run reconnect in a separate thread to avoid blocking main loop
         threading.Thread(target=_do_reconnect, daemon=True).start()
 

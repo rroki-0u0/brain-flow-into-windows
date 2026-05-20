@@ -441,8 +441,11 @@ class OverlayWindow:
         r_pre = np.clip(r_f * alpha_f, 0, 255).astype(np.uint8)
 
         # BGRA layout, packed top-down to match the DIB orientation.
-        bgra = np.dstack([b_pre, g_pre, r_pre, a_u8])
-        buf = np.ascontiguousarray(bgra)
+        buf = np.empty((h, w, 4), dtype=np.uint8)
+        buf[..., 0] = b_pre
+        buf[..., 1] = g_pre
+        buf[..., 2] = r_pre
+        buf[..., 3] = a_u8
 
         # Copy bits into the DIB and flush the GDI pipeline so
         # UpdateLayeredWindow sees the latest content.
@@ -454,13 +457,6 @@ class OverlayWindow:
         size = _SIZE(w, h)
         pt_dst = _POINT(self._monitor.x, self._monitor.y)
 
-        user32.UpdateLayeredWindow.argtypes = [
-            wintypes.HWND, wintypes.HDC,
-            ctypes.POINTER(_POINT), ctypes.POINTER(_SIZE),
-            wintypes.HDC, ctypes.POINTER(_POINT),
-            wintypes.DWORD, ctypes.POINTER(_BLENDFUNCTION), wintypes.DWORD,
-        ]
-        user32.UpdateLayeredWindow.restype = wintypes.BOOL
         ok = user32.UpdateLayeredWindow(
             self._root_hwnd, self._screen_dc,
             byref(pt_dst), byref(size),

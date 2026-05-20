@@ -6,3 +6,10 @@ Pillow
 pywin32
 pystray
 screeninfo
+
+# Transitive dependencies pulled in by the openmuse submodule's
+# top-level __init__.py (decode/muse/record/stream/view).
+pandas>=1.5.0
+mne-lsl>=1.10.0
+matplotlib>=3.5.0
+vispy>=0.12.0
