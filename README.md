@@ -5,7 +5,7 @@ Muse S Athena EEG ヘッドバンドと Bluetooth (BLE) で接続し、リアル
 ## 特徴
 
 - リアルタイム EEG 解析: bleak + OpenMuse プロトコルで Muse S から脳波データを取得し、バンドパワー分析で集中度・リラックス度を算出
-- ウルトラ省電力ストリーミング: Muse S Athena 専用プリセット `p1034` (EEG4 のみ) を既定使用し、デバイスの稼働時間を最大化。`MUSE_PRESET` で `p1041` などに切り替え可能
+- ウルトラ省電力ストリーミング: Muse S Athena 専用プリセット `p50` (EEG4 のみ、光学/ACC/Gyro/Battery 無し) を既定使用し、デバイスの稼働時間を最大化。EEG-only 時は BLE 通知も EEG キャラクタリスティックのみに絞ります。`MUSE_PRESET` で `p1041` などに切り替え可能
 - 自動再接続: 接続に失敗した場合や接続が切れた場合、指数バックオフ (1 / 2 / 4 / 8 / 16 / 30 秒上限) で永続的に再接続を試みる
 - HueShift オーバーレイ: 3 アンカー補間。Focus 最大で赤、均衡で青、Relax 最大で緑にスムーズに変化
 - クリックスルー: オーバーレイは常に最前面に表示されるが、下のウィンドウの操作を妨げない
@@ -49,10 +49,11 @@ Copy-Item .env.example .env
 
 環境変数 `MUSE_PRESET` で BLE プリセットを切り替えられます。`.env` に書くか、起動前に PowerShell でセットします。
 
-- 未設定 / 空文字: `p1034` - **EEG4 only (既定 / ウルトラ省電力)**。Optics / ACC / Gyro / Battery を送信せず、稼働時間が最も長い
-- `p1041`         : EEG8 + Optics16 + ACCGYRO + Battery (フルセンサー / 従来の低消費電力)
-- `p20`           : EEG + ACCGYRO (Optics 無し)
-- `p21`           : EEG + PPG (BrainFlow ネイティブの既定)
+- 未設定 / 空文字: `p50`  - **EEG4 only (既定 / ウルトラ省電力)**。Optics / ACC / Gyro / Battery を送信せず、稼働時間が最も長い
+- `p1041`         : EEG8 + Optics16 + ACCGYRO + Battery (フルセンサー)
+- `p1034`         : EEG8 + Optics8 (フルセンサー、LED 明るめ)
+- `p20`           : EEG4 + ACCGYRO (Optics 無し)
+- `p21`           : EEG4 + PPG (BrainFlow ネイティブの既定)
 
 ```powershell
 # 例: フルセンサーモードで起動
@@ -60,7 +61,7 @@ $env:MUSE_PRESET = "p1041"
 python main.py
 ```
 
-起動ログに `Scanning for Muse S (preset=p1034 - EEG4 only ...)` のように出れば反映されています。
+起動ログに `Scanning for Muse S (preset=p50 - EEG4 only ...)` のように出れば反映されています。
 
 ## 起動
 
@@ -71,7 +72,7 @@ python main.py
 起動すると:
 
 1. システムトレイに HueShift 値（0-100）アイコンが表示されます
-2. Muse S を BLE で自動スキャンし、ウルトラ省電力プリセット `p1034` (EEG4 only) で接続を試みます
+2. Muse S を BLE で自動スキャンし、ウルトラ省電力プリセット `p50` (EEG4 only) で接続を試みます
 3. 接続失敗時は指数バックオフで再試行を続けます
 4. 接続成功後、選択中のディスプレイの縁に HueShift (Focus と Relax の複合) で色が変わるグラデーションオーバーレイが表示されます
 
@@ -109,7 +110,7 @@ relax_weight = relaxation / (focus + relaxation) を 0–1 に正規化し、以
 brain-flow-into-windows/
   main.py              # エントリポイント (Tk + データスレッド管理 + 自動再接続)
   config.py            # 設定定数
-  muse_athena.py       # Muse S Athena BLE アダプタ (preset p1034 default)
+  muse_athena.py       # Muse S Athena BLE アダプタ (preset p50 default)
   muse_connector.py    # MuseAthenaBoard ラッパー (lifecycle)
   brain_metrics.py     # EEG メトリクス計算
   display_manager.py   # マルチディスプレイ管理

@@ -4,8 +4,9 @@ MuseAthenaBoard: Muse S Athena (MS-03) board adapter.
 Drop-in replacement for BrainFlow's BoardShim that talks to the Muse S
 directly via bleak + the OpenMuse BLE protocol.  This bypasses BrainFlow's
 native BLE stack and lets the device run in its ultra-low-power EEG-only
-streaming preset (p1034) by default for the longest battery life.  Set
-``MUSE_PRESET`` (e.g. ``p1041`` for full sensors) to override.
+streaming preset (p50, EEG4 only - no optics / ACC / gyro / battery) by
+default for the longest battery life.  Set ``MUSE_PRESET`` (e.g.
+``p1041`` for full sensors) to override.
 
 Ported from BrainFlowsIntoVRChat/muse_athena.py.
 """
@@ -70,16 +71,22 @@ class MuseAthenaBoard:
     # battery life on Muse S Athena. No Optics / ACC / Gyro / Battery
     # stream. Override per-instance via the ``preset`` constructor
     # argument, e.g. pass ``preset="p1041"`` to also enable Optics16 etc.
-    PRESET = "p1034"
+    PRESET = "p50"
 
     # Supported presets we know about. The board will still try unknown
     # values verbatim - this list is just informational / for logging.
     KNOWN_PRESETS = {
-        "p1034": "EEG4 only (default ultra-low-power)",
-        "p1041": "EEG8 + Optics16 + ACCGYRO + Battery (full low-power)",
-        "p20":   "EEG + ACCGYRO (no optics)",
-        "p21":   "EEG + PPG (BrainFlow native default)",
+        "p50":   "EEG4 only (default ultra-low-power)",
+        "p1041": "EEG8 + Optics16 + ACCGYRO + Battery (full sensors)",
+        "p1034": "EEG8 + Optics8 (full sensors, bright LED)",
+        "p20":   "EEG4 + ACCGYRO (no optics)",
+        "p21":   "EEG4 + PPG (BrainFlow native default)",
     }
+
+    # Presets that emit EEG only - we can skip OTHER characteristic
+    # subscription and downstream PPG processing entirely. Per the OpenMuse
+    # preset table, p20/p21/p50/p51/p60/p61 all stream EEG4 without optics.
+    EEG_ONLY_PRESETS = frozenset({"p20", "p21", "p50", "p51", "p60", "p61"})
 
     def __init__(self, preset: Optional[str] = None) -> None:
         self._preset = (preset or self.PRESET).strip() or self.PRESET
@@ -196,8 +203,13 @@ class MuseAthenaBoard:
 
     @property
     def preset(self) -> str:
-        """The active streaming preset (e.g. ``p1041`` or ``p1034``)."""
+        """The active streaming preset (e.g. ``p1041`` or ``p50``)."""
         return self._preset
+
+    @property
+    def is_eeg_only(self) -> bool:
+        """True when the active preset streams EEG only (no optics/PPG)."""
+        return self._preset in self.EEG_ONLY_PRESETS
 
     # ── Internal BLE loop ─────────────────────────────────────────────────────
 
@@ -227,9 +239,14 @@ class MuseAthenaBoard:
             )
             parsed = parse_message(f"{ts_str}\t{uuid_str}\t{raw.hex()}")
             self._process_eeg(parsed.get("EEG", []), now)
-            self._process_ppg(parsed.get("OPTICS", []), now)
+            if not self.is_eeg_only:
+                self._process_ppg(parsed.get("OPTICS", []), now)
 
-        callbacks = {uuid: _on_data for uuid in MuseS.DATA_CHARACTERISTICS}
+        if self.is_eeg_only:
+            subscribed_chars = (MuseS.EEG_UUID,)
+        else:
+            subscribed_chars = MuseS.DATA_CHARACTERISTICS
+        callbacks = {uuid: _on_data for uuid in subscribed_chars}
         try:
             async with bleak.BleakClient(self._address, timeout=15.0) as client:
                 await MuseS.connect_and_initialize(

@@ -2,10 +2,10 @@
 Muse S Athena BLE connector built on the MuseAthenaBoard adapter.
 
 Talks to the headband over bleak + the OpenMuse BLE protocol with the
-low-power Athena streaming preset (p1041 - EEG8 + Optics16 + ACCGYRO +
-Battery), bypassing BrainFlow's native BLE backend so the device can
-stay in its lower-power streaming mode while still exposing a
-BoardShim-compatible data layout to the rest of the application.
+ultra-low-power Athena streaming preset (p50 - EEG4 only, no optics /
+ACC / gyro / battery), bypassing BrainFlow's native BLE backend so the
+device can stay in its lower-power streaming mode while still exposing
+a BoardShim-compatible data layout to the rest of the application.
 """
 
 from __future__ import annotations
@@ -28,7 +28,7 @@ def _resolve_preset() -> Optional[str]:
     """Return the BLE preset selected via the ``MUSE_PRESET`` env var.
 
     Falls back to ``None`` (which makes ``MuseAthenaBoard`` use its class
-    default ``p1034``). Set ``MUSE_PRESET=p1041`` for full sensor
+    default ``p50``). Set ``MUSE_PRESET=p1041`` for full sensor
     streaming (EEG + PPG + IMU).
     """
     preset = os.getenv("MUSE_PRESET", "").strip()
