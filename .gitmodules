@@ -1,0 +1,3 @@
+[submodule "openmuse"]
+	path = openmuse
+	url = https://github.com/DominiqueMakowski/OpenMuse.git
