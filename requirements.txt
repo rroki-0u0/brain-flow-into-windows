@@ -1,0 +1,8 @@
+brainflow
+bleak
+numpy
+python-dotenv
+Pillow
+pywin32
+pystray
+screeninfo
